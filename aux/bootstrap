@@ -1,0 +1,6 @@
+#! /bin/sh
+# Autoconf bootstrap
+set -x
+aclocal -I aux
+automake --foreign --add-missing --copy
+autoconf

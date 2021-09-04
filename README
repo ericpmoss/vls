@@ -1,0 +1,106 @@
+                          VLS (Vanilla Lisp Shell)
+
+
+                               *Introduction*
+
+The Vanilla Lisp Shell (VLS) is designed to provide an Emacs interface
+to a Lisp process that from the user's perspective works basically the
+same way for every flavor of Lisp.  For example `M-RET' evaluates an
+expression and `C-c C-b' produces a back-trace regardless of the type of
+Lisp.  VLS will work with any Lisp specification such as Common Lisp or
+Scheme and any Lisp implementation such as Allegro Common Lisp or CMU
+Common Lisp.
+
+This flexibility is achieved by Lisp type specifics files that have a
+simple syntax for associating common symbols with specific Lisp command
+strings.  Those common symbol values are then used by VLS commands in
+forming a dialog with a specific Lisp process.  VLS provides a
+comprehensive set of type specifics files based on current Lisp
+implementations, but the user can have his own set of type specifics
+files and edit them for customized effects.
+
+VLS tries as much as possible to make the VLS commands work exactly the
+same way whether in the Lisp shell buffer or in a Lisp source code file
+buffer.  This philosophy allows the Lisp shell buffer to work more like
+a free form scratch pad rather than a sequential prompt enter paradigm;
+althought the user may operate that way also if that is what they are
+accustomed to.
+
+VLS tries to be as intelligent as possible.  For example when evaluating
+a form in a Common Lisp file VLS will search the source file and
+automatically put the Lisp process in the correct package before
+evaluating the form.
+
+Along with the expected Lisp shell capabilities VLS also provides
+sophisticated Lisp tools.  One such tool is generalized source code
+instrumenting.  Conditional breakpoints are just one example of a source
+code instrument.  VLS provides a small useful set of instruments and a
+facility to make it easy for the user to add custom instruments.
+
+
+
+                               *Installation*
+
+To make VLS unpack it in some directory with
+
+     tar -zxvf *tar-file*
+
+where *tar-file* is the VLS tar file with the `tgz' file extension.
+This will create a `vls' sub-directory there.  Change to the `vls'
+sub-directory and type either
+
+     ./configure
+
+or
+
+     ./configure --prefix=PATH
+
+By default the first will prepare to install VLS under the default
+directory `/usr/local'.  The second will prepare to install VLS under a
+directory PATH that you provide.
+
+Then type
+
+     make
+
+To install the made VLS system depending on the operating system and
+installation PATH you may need to log in as a super user.  Then type
+
+     make install
+
+The key files that get installed are
+
+     PATH/share/emacs/site-lisp/vls.el
+     PATH/share/emacs/site-lisp/vls.elc
+     PATH/lib/vls/types
+     PATH/lib/vls/extra
+     PATH/info/vls.info
+     PATH/doc/vls/vls.html
+
+where PATH is the installation directory.
+
+
+
+                                  *Using*
+
+To get started you should read the VLS user document.  A quick start can
+be tried by just reading the Getting Started chapter.  The `vls.html'
+file can be read in a web browser.  So for example if the above PATH was
+`/usr/local' you can use the URL
+
+     file:/usr/local/doc/vls/vls.html
+
+Or if you want to read the VLS user document in Emacs with the `info'
+command, while in Emacs type
+
+     C-u C-h i /usr/local/info/vls
+
+You can also get a PostScript copy of the VLS document by changing to
+the directory where you typed `./configure' and then change to the
+sub-directory `doc' and type
+
+     make ps
+
+which will create a PostScript version of the VLS user document called
+
+     vls.ps

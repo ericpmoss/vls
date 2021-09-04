@@ -1,0 +1,2273 @@
+\input texinfo   @c -*-texinfo-*-
+@c %**start of header
+@setfilename vls.info
+@setchapternewpage on
+@footnotestyle separate
+@c %**end of header
+
+@dircategory VLS
+@direntry
+* VLS: (vls).           Vanilla Lisp Shell users manual
+@end direntry
+
+@settitle Vanilla Lisp Shell
+
+@c ------------------------------------------------------------------
+@titlepage
+@sp 10
+@center @titlefont{Vanilla Lisp Shell (VLS)}
+
+@c ------------------------------------------------------------------
+@page
+@vskip 0pt plus 1filll
+Copyright @copyright{} 2001 William Paul Vrotney
+@end titlepage
+@contents
+
+@c ------------------------------------------------------------------
+@node    Top, Introduction, (dir), (dir)
+@comment node-name, next,          previous, up
+
+The Vanilla Lisp Shell (VLS) is designed to provide an Emacs interface
+to a Lisp process that works basically the same way for every flavor of
+Lisp.
+
+@menu
+* Introduction::                
+* Notation Conventions::        
+* Getting Started::             
+* Current Lisp::                
+* Vanilla Commands::            
+* Other Flavored Commands::     
+* Instrumenting Code::          
+* Type Specifics Files::        
+* Creating VLS Shell Commands::  
+* Other VLS Interfaces::        
+* Variable and Command Index::  
+* Concept Index::               
+@end menu
+
+@c ------------------------------------------------------------------
+@node Introduction, Notation Conventions, Top, Top
+@chapter Introduction
+@cindex Vanilla Lisp Shell, What is 
+
+The Vanilla Lisp Shell (VLS) is designed to provide an Emacs interface
+to a Lisp process that from the user's perspective works basically the
+same way for every flavor of Lisp.  For example @code{M-RET} evaluates
+an expression and @code{C-c C-b} produces a back-trace regardless of the
+type of Lisp.  VLS will work with any Lisp specification such as Common
+Lisp or Scheme and any Lisp implementation such as Allegro Common Lisp
+or CMU Common Lisp.
+
+This flexibility is achieved by Lisp type specifics files that have a
+simple syntax for associating common symbols with specific Lisp command
+strings.  Those common symbol values are then used by VLS commands in
+forming a dialog with a specific Lisp process.  VLS provides a
+comprehensive set of type specifics files based on current Lisp
+implementations, but the user can have his own set of type specifics
+files and edit them for customized effects.
+
+VLS tries as much as possible to make the VLS commands work exactly the
+same way whether in the Lisp shell buffer or in a Lisp source code file
+buffer.  This philosophy allows the Lisp shell buffer to work more like
+a free form scratch pad rather than a sequential prompt enter paradigm;
+although the user may operate that way also if that is what they are
+accustomed to.
+
+VLS tries to be as intelligent as possible.  For example when evaluating
+a form in a Common Lisp file VLS will search the source file and
+automatically put the Lisp process in the correct package before
+evaluating the form.
+
+Along with the expected Lisp shell capabilities VLS also provides
+sophisticated Lisp tools.  One such tool is generalized source code
+instrumenting.  Conditional breakpoints are just one example of a source
+code instrument.  VLS provides a small useful set of instruments and a
+facility to make it easy for the user to add custom instruments.
+
+@c ------------------------------------------------------------------
+@node Notation Conventions, Getting Started, Introduction, Top
+@chapter Notation Conventions
+@cindex Notation Conventions
+
+VLS commands are presented using the following form
+
+@example
+Command: @emph{command-name} Keys: @emph{key-sequence} Action: @emph{description}
+@end example
+
+where the user can execute the command with M-x @emph{command-name} or
+with the default key sequence @emph{key-sequence}.  And
+@emph{description} is a description of what the command does.  Most of
+these commands are covered in the Vanilla Commands chapter, @xref{Vanilla
+Commands}.
+
+@cindex Concept of nil
+
+Some VLS commands will have a universal action that has the same
+@emph{description} for all Lisp types but more specific meanings or
+specific meanings for prefix arguments for a particular Lisp type.
+These are covered under the specific Lisp section under Other Flavored
+Commands, @xref{Other Flavored Commands}.  These specific descriptions
+are meant to augment the universal command form above using the specific
+form
+
+@example
+Command: @emph{command-name} Lisp Type Specific Actions: @emph{description}
+@end example
+
+where @emph{description} in this case describes the specific Lisp
+actions of @emph{command-name}.
+
+At a few points in this document we refer to the operating system
+variables @code{$LISPDIR} and @code{$VLSLIBDIR}.  Please note that these
+variables are @emph{not} set up by VLS or required to be set up by the
+user.  They are only used in this document to designate two important
+directories.
+
+The variable @code{$LISPDIR} designates the directory where the VLS
+program has been installed.  And the variable @code{$VLSLIBDIR}
+designates the directory where the VLS @code{types} directory is stored.
+For example the default designated values for these under Unix are
+
+@example
+@group
+LISPDIR = /usr/local/share/emacs/site-lisp
+VLSLIBDIR = /usr/local/lib/vls
+@end group
+@end example
+
+All Lisps have the concept of @code{nil}, more or less.  Common Lisp
+does in fact were @code{nil} means a constant symbol denoting false, the
+empty list and is interpreted as the end of a list in a cons that has a
+@code{cdr} of @code{nil}.  Some Lisps do not have the concept of
+@code{nil} by default.  Scheme for example does not.  In Scheme the
+closest thing to @code{nil} is the constant @code{#f} and the empty
+list.  When @code{nil} is used in this document, regardless of the Lisp
+type, please substitute the obvious meaning.  Unfortunately it would
+have been too tedious to use a specific Lisp meanings in all places
+where @code{nil} occurs in VLS documents and Elisp commands.
+
+@c ------------------------------------------------------------------
+@node    Getting Started, Current Lisp, Notation Conventions, Top
+@chapter Getting Started
+@cindex Getting started using VLS
+
+This chapter gets you started.  Most likely if you are reading this
+document VLS is already installed and you do not need to read the
+section on Installing VLS.  The Lisp Modes section is only important if
+you are using a non-lisp-mode Lisp such as Scheme.
+
+The Sample Lisp Shell Command section, @xref{Sample Lisp Shell Command},
+will show you how to use the sample VLS Lisp shell command @code{vlsc}.
+You might actually want to use this sample Lisp shell command as your
+permanent command.  Other varieties of Lisp shell commands are also
+possible with VLS, @xref{Creating VLS Shell Commands}.
+
+@menu
+* Installing VLS::              
+* Lisp Modes::                  
+* Sample Lisp Shell Command::   
+@end menu
+
+@c ------------------------------------------------------------------
+@node Installing VLS, Lisp Modes, Getting Started, Getting Started
+@section Installing VLS
+@cindex Installing VLS
+
+To make VLS unpack it in some directory with
+
+@example
+tar -zxvf @emph{tar-file}
+@end example
+
+where @emph{tar-file} is the VLS tar file with the @code{tgz} file
+extension.  This will create a @code{vls} sub-directory there.  Change
+to the @code{vls} sub-directory and type either
+
+@example
+./configure
+@end example
+
+or
+
+@example
+./configure --prefix=PATH
+@end example
+
+By default the first will prepare to install VLS under the default
+directory @code{/usr/local}.  The second will prepare to install VLS
+under a directory PATH that you provide.
+
+Then type
+
+@example
+make
+@end example
+
+To install the made VLS system depending on the operating system and
+installation PATH you may need to log in as a super user.  Then type
+
+@example
+make install
+@end example
+
+The key files that get installed are
+
+@example
+@group
+PATH/share/emacs/site-lisp/vls.el
+PATH/share/emacs/site-lisp/vls.elc
+PATH/lib/vls/types
+PATH/lib/vls/extra
+PATH/info/vls.info
+PATH/doc/vls/vls.html
+@end group
+@end example
+
+where PATH is the installation directory.
+
+To get started you should read the VLS user document.  A quick start can
+be tried by just reading the Getting Started chapter.  The
+@code{vls.html} file can be read in a web browser.  So for example if
+the above PATH was @code{/usr/local} you can use the URL
+
+@example
+file:/usr/local/doc/vls/vls.html
+@end example
+
+Or if you want to read the VLS user document in Emacs with the
+@code{info} command, while in Emacs type
+
+@example
+C-u C-h i /usr/local/info/vls
+@end example
+
+You can also get a PostScript copy of the VLS document by changing to
+the directory where you typed @code{./configure} and then change to the
+sub-directory @code{doc} and type
+
+@example
+make ps
+@end example
+
+which will create a PostScript version of the VLS user document called
+
+@example
+vls.ps
+@end example
+
+@c ------------------------------------------------------------------
+@node Lisp Modes, Sample Lisp Shell Command, Installing VLS, Getting Started
+@section Lisp Modes
+@cindex Lisp files Lisp modes
+
+If your Lisp files use @code{lisp-mode} then you @emph{do not} need to
+read this section.  If while visiting one of your Lisp code files you
+look at the variable @code{major-mode} (C-h v major-mode) and it reports
+its value as @code{lisp-mode} then your are using @code{lisp-mode}.
+
+However if your Lisps uses a Lisp mode other than @code{lisp-mode}, for
+example Scheme uses @code{scheme-mode}, then it is important to VLS that
+this be known before VLS is loaded.  This is so that VLS can set its
+default key bindings into the user's preferred mode.  To make this
+happen easily VLS provides a variable @code{vls-modes} that is a list of
+the viable lisp mode that VLS should use.  But default it is simply the
+list
+
+@example
+(lisp-mode)
+@end example
+
+If you intend to use other than the @code{lisp-mode} with VLS then you
+need to set @code{vls-modes} @emph{before} you load VLS.  For example if
+you intended to use Scheme and Common Lisp your need to set in your
+@code{~/.emacs} file
+
+@example
+(setq vls-modes '(lisp-mode scheme-mode))
+@end example
+
+and then load and run VLS.
+
+@c ------------------------------------------------------------------
+@node Sample Lisp Shell Command,  , Lisp Modes, Getting Started
+@section Sample Lisp Shell Command
+@cindex Lisp shell command vlsc
+
+VLS provides a sample Lisp shell command called @code{vlsc}.  We call it
+a "sample" since there are many possible kinds of lisp shell commands
+possible.  But the @code{vlsc} Lisp shell command described in this
+section may be good enough for your permanent Lisp shell command.  For a
+new VLS user it is highly recommended that you start off with
+@code{vlsc} and consider more interesting things later, @xref{Creating
+VLS Shell Commands}.
+
+To understand what to substitute for the variables @code{$LISPDIR} and
+@code{$VLSLIBDIR} used in this section see the section on Notation
+Conventions, @xref{Notation Conventions}.  You will want to put the
+following in your @code{~/.emacs} file
+
+@example
+@group
+; Autoload vlsc command.
+(autoload 'vlsc "$LISPDIR/vls")
+
+; Make C-z a prefix key.  Note that suspend-emacs is also on C-xC-z.
+(if (not (keymapp (key-binding "\C-z"))) (global-unset-key "\C-z"))
+
+; Bind vlsc command to keys.
+(global-set-key "\C-z\C-l" 'vlsc)
+@end group
+@end example
+
+The @code{autoload} will allow VLS to be loaded when you invoke the
+@code{vlsc} command and the @code{global-set-key} will bind the
+@code{vlsc} command to the keys @code{C-zC-l} If you want to bind it to
+something else change the @code{\C-z}s and @code{\C-z\C-l} to something
+else.
+
+The @code{vlsc} command picks a specific Lisp shell to run from a list
+of shell specs.  These shell specs are in a variable @code{vlsc-shells}
+that the user must set.  Each of these shell specs in turn is a list of
+three items: a Lisp shell id, a Lisp executable and a Lisp types
+specifics file.  For example if addition to the above you put in your
+@code{~/.emacs}
+
+@example
+@group
+; Set my list of shells for vlsc command.
+(setq vlsc-shells
+      '((allegro "lisp" "$VLSLIBDIR/types/allegro.el")
+        (allegro-1 "lisp" "$VLSLIBDIR/types/allegro.el")
+        (cmucl "cmucl" "$VLSLIBDIR/types/cmucl.el")))
+@end group
+@end example
+
+the first entry says create a shell called @code{allegro} with a buffer
+called "*allegro*" that then runs the executable @code{lisp} and sets up
+that particular shell based on the contents of the Lisp types file
+@code{types/allegro.el.}  And the same for @code{allegro-1} and
+@code{cmucl}.  If you want to run more or different Lisps edit the above
+with differently named shell ids, Lisp executables and their associated
+Lisp type file.  If you look in the @code{$VLSLIBDIR/types} directory
+you should find one compatible with your Lisp.  If not you will have to
+create your own Lisp type file, @xref{Type Specifics Files}.
+
+Then when you rerun Emacs you should be able to type the keys you bound
+to @code{vlsc} and it should invoke the first shell you gave in
+@code{vlsc-shells}.  Typing that subsequently will return to that
+established shell buffer.  A numeric prefix argument N given to the
+@code{vlsc} command will invoke the Nth shell.  A @code{C-u} prefix
+argument will list the Lisp shells invoked by prefix argument N where N
+= 0 is the same as no prefix argument.
+
+@c ------------------------------------------------------------------
+@node Current Lisp, Vanilla Commands, Getting Started, Top
+@chapter Current Lisp
+@cindex Current Lisp, Meaning of
+
+To use VLS it is important to understand the concept of the Current Lisp
+and a Lisp Shell Buffer.  When you run a Lisp Shell using VLS it creates
+a Lisp shell buffer, runs a Lisp executable as a process and then
+associates that Lisp process with that buffer.  It also makes that
+buffer's Lisp process the Current Lisp.  Whenever VLS sends any Lisp
+expressions it always sends them to the Current Lisp.  So for example if
+you were to evaluate an expression in any Lisp file buffer it would send
+the expression to the Current Lisp process and would pop-up the Lisp
+Shell buffer associated with the Current Lisp process and print the
+returned value in that buffer.
+
+If there are multiple VLS Lisp Shell buffers only one will be associated
+with the Current Lisp process.  There are three ways to make a VLS Lisp
+Shell the current Lisp: 1. When you invoke that Lisp Shell for the first
+time.  2. While in a Lisp Shell buffer you execute any VLS command.
+3. You manually make the Current Lisp Shell buffer the Current Lisp with
+the @code{vls-make-current} command, @xref{Shell Buffer Commands}.
+
+Note that when you invoke a Lisp Shell it will only become the Current
+Lisp on the initial invocation.  All subsequent invocations will simply
+switch to that Lisp Shell buffer.  This is so that you can easily switch
+between different Lisp process buffers to examine contents without
+worrying about changing the Current Lisp.
+
+@c ------------------------------------------------------------------
+@node Vanilla Commands, Other Flavored Commands, Current Lisp, Top
+@chapter Vanilla Commands
+@cindex Vanilla Command, What is
+
+This chapter describes Emacs VLS commands that work the same way
+regardless of the Lisp specification or implementation.  In some rare
+cases a specific Lisp may completely change the semantics of the vanilla
+command, @xref{Mechanism Specifics Parameters}.  The Emacs documentation
+of such commands will reflect accurately what it does and it usually
+does what you would expect the vanilla command to do in that special
+Lisp type case.  In some common cases where the vanilla command for a
+specific Lisp just differs in a small way, such as a slightly different
+meaning of a command prefix argument, those command differences are
+covered in another chapter, @xref{Other Flavored Commands}.  In all
+cases the Emacs documentation (@code{C-h d} or @code{describe-function})
+for any VLS command should accurately reflect what the command does for
+the current Lisp process.
+
+The Instrumentation commands are in this same category of vanilla
+commands but deserve a separate chapter, @xref{Instrumenting Code}.
+
+
+@c ------------------------------------------------------------------
+@menu
+* Eval Commands::               
+* Shell Buffer Commands::       
+* Lisp File Commands::          
+* Information Commands::        
+* Package Commands::            
+* Debugging Commands::          
+@end menu
+
+@node Eval Commands, Shell Buffer Commands, Vanilla Commands, Vanilla Commands
+@section Eval Commands
+@cindex Evaluating Lisp expressions
+
+When we talk about "eval" commands we mean commands that send some data
+to the Lisp process for interpretation.  A common case of this is
+sending a Lisp s-expression to the Lisp process read-eval-print loop.
+And in all cases when the Lisp process returns a value or it wants to
+print some text, the Lisp shell will print the value or values or text
+in the Lisp shell buffer.
+
+The basic Lisp read-eval-print loop is simple and the only thing that it
+can evaluate is a Lisp s-expression.  But modern Lisps are not this
+simple and allow other kinds of interpretation.  For example
+non-s-expression commands to a debugger are now vogue.  These kinds of
+modern divergences from the old basic Lisp read-eval-print loop creates
+two interesting issues for the modern Lisp shell.  The first is that
+there are many different classes of things to evaluate or interpret:
+s-expression, a line, a region, a letter, a word ... etc.  The second
+issue is that it opens up the possibility of different kinds of
+evaluation paradigms.  For example one paradigms might be to operate the
+Lisp shell buffer as something like a prompt-enter-return paradigm of a
+Unix shell.  Another paradigm might be to operate the Lisp shell buffer
+as a free form scratch pad.  VLS attacks deals with these issues by
+giving the user all possible choices rather than imposing a single
+style.
+
+The default settings are more inclined to more of a free form scratch
+pad paradigm.  But VLS makes it easy for the user to set up things they
+way they like it.  The way that VLS does this is to have a one eval
+command @code{vls-eval} that is easily customized.  Basically the way
+that @code{vls-eval} works is to execute one of a collection of evals
+commands that VLS or the user provides.  The user can easily change
+these evals commands in his @code{~/.emacs} file.
+
+First we describe @code{vls-eval} and then each of the commands that by
+default it can execute.
+
+@vindex vls-eval
+Command: @code{vls-eval} Keys: @code{M-RET} Action: Execute the 0th
+(first) eval command on the list @code{vls-evals}.  By default this is
+@code{vls-eval-previous}.  A numeric prefix argument N will execute the
+Nth eval command in @code{vls-evals}.  A @code{C-u} prefix argument will
+list all of the eval commands in @code{vls-evals}.
+
+@vindex vls-evals
+Variable: @code{vls-evals} Meaning: Contains a list of eval commands to
+be executed by @code{vls-eval}.  The user can set this list to their
+choosing by setting it in their @code{~/.emacs} file.  For example
+
+@example
+(setq vls-evals '(vls-send-input my-special-eval vls-eval-previous))
+@end example
+
+would cause @code{vls-eval} to execute the @code{vls-send-input}
+command.  And with a prefix argument of 1 it would execute a command
+called @code{my-special-eval}.
+
+To have @code{vls-eval} execute a command with a specific prefix
+argument just specify a list form in @code{vls-evals} that is similar to
+a function call with arguments.  For example if in the previous example
+@code{my-special-eval} does an even more special thing with a prefix
+argument of 9 you could do something like
+
+@example
+(setq vls-evals '(my-special-eval vls-eval-previous (my-special-eval 9)))
+@end example
+
+Then @code{vls-eval} with no prefix argument would execute
+@code{my-special-eval} and @code{vls-eval} with a prefix argument of 2
+would execute @code{my-special-eval} as if given a prefix argument of 9.
+
+@vindex vls-eval-previous
+Command: @code{vls-eval-previous} Action: Send the previous s-expression
+from point to the current Lisp process.  This is the default evaluator
+for @code{vls-eval} and supports the idea of a free form scratch pad
+paradigm for talking to the Lisp process because any expression or
+sub-expression in the Lisp shell buffer, Lisp file buffer or any Lisp
+buffer can be evaluated with this command.  To send Lisp data that is
+not on the form of a s-expression use @code{vls-send-input} or
+@code{vls-send-region}.
+
+@vindex vls-send-input
+Command: @code{vls-send-input} Keys: @code{C-c RET} Action: Send the
+last entered input into the Lisp shell buffer to the current Lisp
+process.  Note that this command is not intended to work on other points
+in the buffer other than the last entered data and @emph{only} works in
+a VLS shell buffer.  It is also useful for sending non-s-expression
+data to the current Lisp process from the current Lisp shell buffer.
+
+@vindex vls-send-region
+Command: @code{vls-send-region} Action: Send the Emacs region (from
+point ro mark) to the current Lisp process.
+
+@vindex vls-eval-definition
+Command: @code{vls-eval-definition} Keys: @code{C-M-x} Action: Send the
+top level definition that point is in in to the current Lisp process.
+
+@c ------------------------------------------------------------------
+@node Shell Buffer Commands, Lisp File Commands, Eval Commands, Vanilla Commands
+@section Shell Buffer Commands
+
+This section describes the VLS commands related to the Lisp Shell Buffer
+itself and associated Lisp process.
+
+@vindex vls-exit-lisp
+Command: @code{vls-exit-lisp} Keys: @code{C-c !}  Action: Exits the
+Lisp process associated with the current Lisp shell buffer and asks to
+delete the buffer.
+
+@vindex vls-make-current
+Command: @code{vls-make-current} Keys: @code{C-c C-x c} Action: Makes
+the current buffer, if it is a VLS Lisp Shell buffer, the Current Lisp
+shell buffer and process.
+
+@vindex vls-interrupt-lisp-process
+Command: @code{vls-interrupt-lisp-process} Keys: @code{C-c C-c} Action:
+Interrupts the current Lisp process and usually causes an immediate
+exception stack break in the current Lisp buffer so that the user can
+examine the state of the Lisp process.
+
+@vindex vls-kill-last-output
+Command: @code{vls-kill-last-output} Keys: @code{C-c C-o} Action:
+Kills all output from the Lisp process since the last manual eval in the
+current Lisp Shell Buffer.  The output is placed onto the top of the
+Emacs kill stack so that you can yank it back with the @code{yank}
+command.
+
+@vindex vls-yank-last-input
+Command: @code{vls-yank-last-input} Keys: @code{C-c C-y} Action: Yanks
+the last input set to the current Lisp process at point.  Successively
+repeating this command will yank previous inputs from the input ring of
+the current Lisp process.  Each Lisp shell has its own input ring.
+
+@vindex vls-input-ring-size
+Variable: @code{vls-input-ring-size} Meaning: Indicates the maximum size
+of Lisp shell input rings.  The default setting is 16.
+
+@cindex Lisp processes, Dealing with
+
+@vindex vls-focus-process
+Command: @code{vls-focus-process} Keys: @code{C-c C-x f} Action: Some
+Lisps have a multiprocessing capability.  For the ones that do there is
+usually an available list of processes.  A VLS Lisp Shell can only be
+focused on one of those processes at at time.  What it means to be
+focused on a Lisp process in a VLS Lisp shell buffer is that when you
+send s-expressions or other data to the Lisp process to be evaluated the
+focused process is the one that will receive the s-expressions or data
+and respond.  In other terminology the focused process is the active
+Lisp Listener.  This command focuses the current Lisp shell on the first
+process in the current Lisp process list.  A numeric prefix argument N
+focuses on the Nth Lisp process.  A @code{C-u} prefix argument prints
+the list in the Lisp shell buffer so that you know which is which.
+
+@vindex vls-reload-specifics
+Command: @code{vls-reload-specifics} Keys: @code{"C-c C-x R"} Action:
+Reloads the Lisp specifics file associated with current Lisp Shell
+buffer.  This is useful when you want to modify a Lisp specifics file
+and want it to take effect without rerunning the Lisp shell.
+
+@c ------------------------------------------------------------------
+@node Lisp File Commands, Information Commands, Shell Buffer Commands, Vanilla Commands
+@section Lisp File Commands
+@cindex Lisp files, Working with
+
+Most VLS Lisp commands work the same way whether in a Lisp file buffer
+or in a Lisp shell buffer.  The commands in this section have a slightly
+different meaning if the current buffer does not have a file associated
+with it; in that case one will be prompted for.  This provides a
+convenient way to operate on a prompted Lisp file by going to a VLS Lisp
+shell buffer and executing any one of these commands.
+
+
+@vindex vls-compile-file
+Command: @code{vls-compile-file} Keys: @code{C-c c} Action: The current
+buffer's Lisp file is compiled in the current Lisp process.  A
+@code{C-u} prefix argument will evaluate and compile just the current
+definition that point is in.
+
+@vindex vls-load-source
+Command: @code{vls-load-source} Keys: @code{C-c l} Action: The current
+buffer's file Lisp source is loaded into the current Lisp process.  A
+@code{C-u} prefix argument causes the result of each expression to be
+printed in the current Lisp buffer as it is loaded.
+
+@vindex vls-load-source-or-binary
+Command: @code{vls-load-source-or-binary} Keys: @code{C-c C-l} Action:
+The current buffer's file Lisp source or binary file is loaded into the
+current Lisp process.  Which ever is loaded depends on the rules for the
+current Lisp for what gets loaded when a file minus it's extension is
+specified to be loaded.  A @code{C-u} prefix argument causes the result
+of each expression to be printed in the current Lisp buffer as it is
+loaded.
+
+@c ------------------------------------------------------------------
+@node Information Commands, Package Commands, Lisp File Commands, Vanilla Commands
+@section Information Commands
+
+This section lists the VLS commands for getting information from the
+current Lisp process or VLS program.
+
+@vindex vls-apropos
+Command: @code{vls-apropos} Keys: @code{C-c i a} Action: In Lisps that
+have an apropos facility do an apropos on the symbol that point is on.
+
+@vindex vls-describe
+Command: @code{vls-describe} Keys: @code{C-c i d} Action: Describe the
+symbol of the current Lisp process that point is on in the current
+buffer.
+
+@vindex vls-help
+Command: @code{vls-help} Keys: @code{C-c h} Action: Prints out a list of
+Lisp special mode commands in the current Lisp shell buffer.  Typically
+this list is useful when debugging but in some Lisps can contain other
+helpful commands.
+
+Command @code{vls-version} Keys: @code{C-c i v} Action: Show the
+currently running version of VLS.
+
+@c ------------------------------------------------------------------
+@node Package Commands, Debugging Commands, Information Commands, Vanilla Commands
+@section Package Commands
+@cindex Lisp symbol packages
+
+Some Lisps, such as Common Lisp, have symbol package systems.  This
+section only applies to those kinds of Lisps.
+
+When evaluating expressions in a Lisp file with any VLS eval command VLS
+automatically searches the file for an expression that declares what
+package a following expression should be evaluated in.  For example in
+Common Lisp this is an @code{in-package} expression.  If for some reason
+you don't want that to happen you can narrow the Lisp file buffer to
+just the expression or region being evaluated.
+
+VLS also provides the following commands for easily setting and
+inquiring what the symbol current package is.
+
+@vindex vls-what-package
+Command: @code{vls-what-package} Keys: @code{C-c C-p} Action: Reports
+the current Lisp current package in the current Lisp shell buffer.
+
+@vindex vls-in-package
+Command: @code{vls-in-package} Keys: @code{C-c p} Action: Searches the
+current buffer backwards for an @code{in-package} expression and sends
+to the current Lisp process.  A numeric prefix argument N searches for
+Nth previous @code{in-package} expression.  If N is negative it searches
+forward for the -Nth.  A @code{C-u} prefix argument pushes the previous
+@code{in-package} expression on the Emacs kill ring.
+
+@c ------------------------------------------------------------------
+@node Debugging Commands,  , Package Commands, Vanilla Commands
+@section Debugging Commands
+@cindex Debugging Lisp programs
+
+Most Lisps have the capability to examine the execution call stack when
+a program encounters an error or certain exceptions.  There are usually
+a whole raft of stack based functions specific to each Lisp that can
+usually be printed with the @code{vls-help} command.  VLS provides some
+of the more important ones as vanilla commands.  VLS also provides some
+of the specific stack functionality that work differently for each
+specific Lisp, @xref{Other Flavored Commands}.
+
+The @code{vls-up-stack} and @code{vls-down-stack} commands move up and
+down the run time stack frames.  What it means to position to a stack
+frame is to be in the same call and variable binding environment
+associated with that stack frame.  The direction "down" means earlier
+stack frames and "up" means later stack frames.
+
+
+@vindex vls-back-trace
+Command: @code{vls-back-trace} Keys: @code{C-c C-b} Action: Prints out a
+backtrace of the run time stack in the current Lisp shell buffer.  For
+specific Lisp type prefix argument functionality, @xref{Other Flavored
+Commands}.
+
+@vindex vls-current-frame
+Command: @code{vls-current-frame} Keys: @code{C-c C-f} Action: Prints
+out information about the current stack frame in the current Lisp shell
+buffer.
+
+@vindex vls-down-stack
+Command: @code{vls-down-stack} Keys: @code{C-c C-d} Action: Move down
+the run time stack one stack frame in the current Lisp shell.  A numeric
+prefix argument N means move down N frames.  A @code{C-u} prefix
+argument means move to bottom of stack.
+
+@vindex vls-reset-listener
+Command: @code{vls-reset-listener} Keys: @code{C-c C-r} Action: Reset
+the Lisp listeners to the top level listener.  So for example no matter
+how nested into break listeners this command will unwind all of those to
+the top level listener.  If given a numeric prefix argument N it will
+reset only N listeners.  So for example if you are in a break listener
+and then create another error, a 1 prefix argument here will return you
+to the previous break listener.
+
+@vindex vls-return-frame
+Command: @code{vls-return-frame} Keys: @code{C-c r} Action: Return
+@code{nil} from the current stack frame and continue execution.  With a
+@code{C-u} prefix argument enter a value to return and continue.
+
+@vindex vls-step
+Command: @code{vls-step} Keys: @code{C-c C-s} Action: For Lisps that
+have a code stepper facility and when in a stepping mode this command
+steps one expression.  A numeric prefix argument N steps over the next N
+expressions.  A @code{C-u} prefix argument evaluates the current
+expression in non-stepping mode.
+
+@vindex vls-up-stack
+Command: @code{vls-up-stack} Keys: @code{C-c C-u} Action: Move up the
+run time stack one stack frame in the current Lisp shell.  A numeric
+prefix argument N means move up N frames.  A @code{C-u} prefix argument
+means move to top of stack.
+
+@vindex vls-var-value
+Command: @code{vls-var-value} Keys: @code{C-c C-v} Action: For Lisps
+that have the capability to probe the local value of a variable
+symbolically this command will allow examining the variable binding.
+Usually this is done in some binding environment.  An example would be
+when in a break listener examining the value of some variable within the
+scope of where the code broke.  After executing this command Emacs
+prompts for a variable name in the mini-buffer and then value of that
+variable is then echoed in the current Lisp shell buffer.  In some Lisps
+just entering a RET to the variable name prompt will do something
+special like print the local lexical environment.
+
+@vindex vls-what-error
+Command: @code{vls-what-error} Keys: @code{C-c C-e} Action: Prints the
+current error in the current Lisp shell buffer.  The current error was
+due to evaluating the last Lisp expression that was in error.
+
+@c ------------------------------------------------------------------
+@node Other Flavored Commands, Instrumenting Code, Vanilla Commands, Top
+@chapter Other Flavored Commands
+
+This chapter describes Emacs commands to a Lisp process that are
+specific to various flavors of Lisp.  They are of two varieties.  Those
+commands that are strictly unique to a specific Lisp type and those that
+are common to all Lisp types but have some differences.  Most of the
+second variety are differences in the effect of prefix arguments to
+common commands.  These differences are specified in this document as an
+extension to the vanilla command using notation form "Lisp Type Specific
+Actions:" instead of the "Actions:" forms which are used in the vanilla
+commands section, @xref{Vanilla Commands}.
+
+VLS Lisp commands depend on the Lisp type specifics files, @xref{Type
+Specifics Files}.  If a specific Lisp type does not provide a way to
+provide the full semantics of a vanilla command then a command specifics
+parameter might be missing for that Lisp type.  For example some Lisps
+do not have multiprocessing capabilities so the multiprocessing VLS
+commands would not work.  When executing such a command an error message
+will be issued saying that it did not find a command string for the
+parameter.  The missing parameter command string may be due the author
+of the Lisp specifics files not knowing how or not get to defining that
+parameter.  The user is encouraged to try and define such a parameter.
+
+@c ------------------------------------------------------------------
+@menu
+* Allegro Flavored Commands::   
+* Clisp Flavored Commands::     
+* CMU CL Flavored Commands::    
+* GCL Flavored Commands::       
+* LispWorks Flavored Commands::  
+* MIT Scheme Flavored Commands::  
+* Scheme Flavored Commands::    
+@end menu
+
+@c ------------------------------------------------------------------
+@node Allegro Flavored Commands, Clisp Flavored Commands, Other Flavored Commands, Other Flavored Commands
+@section Allegro Flavored Commands
+
+@vindex vls-back-trace
+Command: @code{vls-back-trace} Lisp Type Specific Actions: A positive
+numeric prefix argument N prints the N stack frames around the current
+stack frame.  With a @code{C-u} prefix argument prints all significant
+stack frames.  With a 0 numeric prefix argument prints all stack frames.
+
+@c ------------------------------------------------------------------
+@node Clisp Flavored Commands, CMU CL Flavored Commands, Allegro Flavored Commands, Other Flavored Commands
+@section Clisp Flavored Commands
+
+@vindex vls-back-trace
+Command: @code{vls-back-trace} Lisp Type Specific Actions: A positive
+numeric prefix argument N between 1 and 5 sets mode to mode-N then back
+trace.  The mode holds for all following @code{vls-back-trace} without
+prefix arguments.  Initially the mode is mode-4 so a prefix argument of
+4 will put you back to the initial mode.  A @code{C-u} prefix argument
+prints maximum stack frames (same as mode-1) and a 0 prefix argument
+prints just the apply stack frames (same as mode-5).
+
+@vindex vls-return-frame
+Command: @code{vls-return-frame} Lisp Type Specific Actions: Clisp
+overrides the vanilla semantics of @code{vls-return-frame} such that
+instead of with a @code{C-u} prefix argument prompting the user for a
+new value and @code{nil} otherwise, always prompts the user for a
+return/continue value in the current Lisp buffer.
+
+@c ------------------------------------------------------------------
+@node CMU CL Flavored Commands, GCL Flavored Commands, Clisp Flavored Commands, Other Flavored Commands
+@section CMU CL Flavored Commands
+
+@vindex vls-back-trace
+Command: @code{vls-back-trace} Lisp Type Specific Actions: A positive
+prefix argument N prints N stack frames down from the current stack
+frame and including the current.
+
+@c ------------------------------------------------------------------
+@node GCL Flavored Commands, LispWorks Flavored Commands, CMU CL Flavored Commands, Other Flavored Commands
+@section GCL Flavored Commands
+
+@vindex vls-back-trace
+Command: @code{vls-back-trace} Lisp Type Specific Actions: A positive
+numeric prefix argument N prints N stack frames from top of stack.  A
+@code{C-u} prefix argument prints a short version of the stack frames.
+
+@c ------------------------------------------------------------------
+@node LispWorks Flavored Commands, MIT Scheme Flavored Commands, GCL Flavored Commands, Other Flavored Commands
+@section LispWorks Flavored Commands
+
+@vindex vls-back-trace
+Command: @code{vls-back-trace} Lisp Type Specific Actions: A positive
+numeric prefix argument N prints N stack frames down from current stack
+frame.  A 0 prefix argument print all objects found in the current stack
+frame.  A @code{C-u} prefix argument prints a very detailed version of
+all stack frames.
+
+@c ------------------------------------------------------------------
+@node MIT Scheme Flavored Commands, Scheme Flavored Commands, LispWorks Flavored Commands, Other Flavored Commands
+@section MIT Scheme Flavored Commands
+
+@vindex vls-return-frame
+Command: @code{vls-return-frame} Lisp Type Specific Actions: MIT Scheme
+overrides the vanilla semantics of @code{vls-return-frame} such that
+instead of with a @code{C-u} prefix argument prompting the user for a
+new value and @code{nil} otherwise, always prompts the user for a
+return/continue value in the current Lisp buffer.
+
+@c ------------------------------------------------------------------
+@node Scheme Flavored Commands,  , MIT Scheme Flavored Commands, Other Flavored Commands
+@section Scheme Flavored Commands
+
+This section applies to all Scheme types.
+
+@vindex vls-help
+Command: @code{vls-help} Lisp Type Specific Actions: Scheme
+implementations tend to not put the user into a debugger when an error
+or exception is encountered.  Instead the user is expected to change
+this behavior or explicitly put himself in the debugger with a call to
+@code{debug}.  To simulate the vanilla behavior the packaged VLS Lisp
+type specifics files debugging commands automatically put the user into
+the debugger, do the action indicated by the VLS command, like for
+example @code{vls-back-trace}, and then exits the debugger.  Scheme Lisp
+types override the vanilla command for @code{vls-help} to work
+differently from these kinds of VLS debugging commands.  It puts the
+user in the debugger and prints the help list but does not exit the
+debugger.  The rationale here is that if the user is asking for the
+Scheme help commands that only work in the debugger it is better to
+leave him there to try one.
+
+@c ------------------------------------------------------------------
+@node Instrumenting Code, Type Specifics Files, Other Flavored Commands, Top
+@chapter Instrumenting Code
+@cindex Debugging lisp programs
+
+VLS provides a facility for making it easy to instrument your Lisp code.
+Code instrumentation help to both understand Lisp code and understand
+what is going on in difficult to understand code bugs.  Most Lisp
+specifications provide tracing facilities.  For example Common Lisp
+specifies a @code{trace} function.  These tracing facilities are quite
+powerful and elegant but they are usually done only at the functional
+interface and show the outline of function input and output arguments
+over time.  Sometimes this is not sufficient.  A case in point is that
+when you trace a function and find that the arguments are not what you
+would expect.  In one sense Code instrumentation takes over where code
+tracing leaves off and helps to get a clear visualization of what is
+happening inside the code.  In fact you can use VLS code instrumentation
+to do selective tracing.
+
+VLS provides a given set of instruments to choose from, @xref{Given
+Instruments}.  But it is easy for you to modify or add to this set,
+@xref{Creating Instruments}.  The section on Given Instruments not only
+explains the given instruments but serves as an example of using
+instruments.
+
+@menu
+* Instrument Basics::           
+* Instrument Commands::         
+* Given Instruments::           
+* Creating Instruments::        
+* Instrument Helpers::          
+@end menu
+
+@c ------------------------------------------------------------------
+@node Instrument Basics, Instrument Commands, Instrumenting Code, Instrumenting Code
+@section Instrument Basics
+@cindex Instrument basic concepts
+
+VLS instruments code in Emacs by placing an instrument at point (see
+Emacs point and mark) inside of a definition in a Lisp file buffer.  A
+VLS instrument is any s-expression.  And you could do exactly what VLS
+does yourself by making a copy of a definition and inserting such
+s-expressions and reevaluating the definition.  But VLS automates this
+process for you to make code instrumentation faster, less tedious and
+less error prone.
+
+VLS maintains a copy of such instrumented definitions and tracks the
+instruments you assert so that you can easily instrument, re-instrument
+and edit the existing instruments.  It also provides a list of common
+instruments for you to choose from when you are creating instruments and
+makes it easy to add your own instruments to this list.  There is some
+science to code instrumentation that makes it appropriate for VLS to
+provide a given list of useful instruments.  For example a conditional
+breakpoint is an example of such an instrument.
+
+VLS code instruments are a form of template that allows an s-expression
+to have slot fillers depending on the code context in which the
+instrument is inserted.  When you choose an instrument at the current
+point in a buffer VLS pops up an edit buffer with just the slot filled
+instrument for your examination.  At this point you can accept the
+automatically provided instrument or edit the instrument to make it do
+more complex things.  When the instrument passes your inspection you hit
+@code{C-cC-c} and the instrument along with all other previous
+instruments are inserted in the copy of the definition and the
+instrumented definition copy is reinstalled in the current Lisp
+process.
+
+When a definition is reinstalled by VLS in this way the user has the
+option of installing just the interpreted version, the compiled version
+or have VSL ask for the option.  You can do this by setting the variable
+@code{vls-compile-instrumented} in your @code{~/.emacs} file or by
+toggling it with the @code{vls-instrument-toggle-compile} command,
+@xref{Instrument Commands}.
+
+@c ------------------------------------------------------------------
+@node Instrument Commands, Given Instruments, Instrument Basics, Instrumenting Code
+@section Instrument Commands
+@cindex Instrument commands
+
+This section contains the VLS commands for applying and using the given
+or user specified instruments.  VLS instrument commands that operate on
+single definitions work by the user placing point inside or after the
+source definition and then executing the command.  When we say
+"definition containing point" in this section we mean the definition
+that point is inside or after but not inside a subsequent s-expression.
+After doing this VLS automatically determines the parameters for the
+definition and effect of the command.
+
+@vindex vls-instrument
+Command: @code{vls-instrument} Keys: @code{C-c SPC SPC} Action: Choose
+an instrument and apply at point.  The user chooses an instrument from
+the list of instruments specified for the current Lisp and applies that
+instrument at point in a definition in the current Lisp buffer.  A list
+of the specified instruments are displayed and the user chooses a number
+for the instrument to be inserted at point.  Just a RET for this choice
+will choose the 0th instrument.  After the instrument is accepted by the
+user in the VLS edit buffer the definition is installed with all
+existing instruments for that definition.  If the definition has already
+been instrumented and the definition has changed from when the
+definition was instrumented @code{vls-instrument} will automatically
+clear all the old instruments and only include this current instrument.
+
+@vindex vls-compile-instrumented
+Variable: @code{vls-compile-instrumented} Meaning: Allows you to control
+what happens when instrumented or uninstrumented code is installed.
+After instrumenting a definition, nil means don't ask don't compile (the
+default), t means don't ask just compile, and 'ask means ask to compile.
+
+@vindex vls-instrument-toggle-compile
+Command: @code{vls-instrument-toggle-compile} Keys: @code{C-c SPC t}
+Action: Toggle the variable @code{vls-compile-instrumented} between
+compile and do not compile instrumented code during its installation, A
+@code{C-u} prefix argument means to set the variable to ask to compile
+during the install.  This command does not require point to be placed
+inside any definition.
+
+@vindex vls-instrument-clear
+Command: @code{vls-instrument-clear} Keys: @code{C-c SPC c} Action:
+Clear all instruments of the definition containing point and reinstalls
+from that source containing point without the instruments.
+
+@vindex vls-instrument-clear-all
+Command: @code{vls-instrument-clear-all} Keys: @code{C-c SPC C} Action:
+Clear all instruments associated with current Lisp process and
+reinstall all pre-instrumented definitions.  Note that this slightly
+different from applying @code{vls-instrument-clear} to all instrumented
+definitions since @code{vls-instrument-clear} installs the definition
+containing point and @code{vls-instrument-clear-all} installs the
+definitions that was saved before it was instrumented.  What this
+implies is that if any definition is edited since it was instrumented it
+should be cleared with @code{vls-instrument-clear}.  Or else if such an
+edited definition was cleared through @code{vls-instrument-clear-all}
+the pre-edited definition will be the installed version until the edited
+version is reinstalled manually.
+
+@cindex Displaying instruments
+
+@vindex vls-instrument-display
+Command: @code{vls-instrument-display} Keys: @code{C-c SPC d} Action:
+Displays the instruments of definition containing point in a VLS buffer.
+Each instrument in this buffer is preceded by a comment indicating that
+it is an instrument.  This command is useful when a the user makes an
+error in instrumenting the definition and wants to see what is going on
+in the instrumented code.
+
+@vindex vls-instrument-display-all
+Command: @code{vls-instrument-display-all} Keys: @code{C-c SPC D} Action:
+Show all instrumented definitions and related information.
+
+@cindex Editing instruments
+
+@vindex vls-instrument-edit
+Command: @code{vls-instrument-edit} Keys: @code{C-c SPC e} Action: Edit
+the instrument closest to point in current definition.  If more than one
+instrument is closest to point then this command will ask which one you
+want.  This allows you to edit a previously inserted instrument.  VLS
+brings up the same @code{*vls*} edit buffer that it did when you
+executed @code{vls-instrument} for the original instrument.  If you
+clear this edit buffer below the header and accept, it results in the
+particular instrument being removed.
+
+@vindex vls-instrument-again
+Command: @code{vls-instrument-again} Keys: @code{C-c SPC r} Action:
+Reinstall instruments of definition containing point.  If for some
+reason the definition containing point was redefined this command allows
+you to reinstall the instrumented definition.  If the definition
+containing point was modified @code{vls-instrument-again} will detect
+this and give the option of doing nothing or reinstalling the old
+definition with its instruments.
+
+@vindex vls-instrument-view-variables
+Command: @code{vls-instrument-view-variables} Keys: @code{C-c SPC v}
+Action: View any variables set by instruments of definition containing
+point.  Some instruments are capable of collecting results in global
+variables a points in your code.  VLS keeps track of these variables and
+this command will print the contents of such variables in the current
+Lisp buffer.
+
+@vindex vls-instrument-restart-variables
+Command: @code{vls-instrument-restart-variables} Keys: @code{C-c SPC V}
+Action: Restart any variables set by instruments of definition
+containing point.  Some instruments are capable of collecting results in
+global variables at points in your code.  Usually these are lists or
+counters of such results at points in time.  These variables will keep
+growing from one test run of your code to the next.  This command allows
+such variables to be reset.  VLS tries to do the correct thing here, for
+example if the accumulated variable has an integer in it it will reset
+it to 0, if it has a list it will reset it to nil, ... etc.
+
+@c ------------------------------------------------------------------
+@node Given Instruments, Creating Instruments, Instrument Commands, Instrumenting Code
+@section Given Instruments
+
+To illustrate the given instruments we will use a Common Lisp example.
+Those non Common Lisp users will have to use their imagination here.
+Suppose that we have a Lisp buffer with the following code for factorial
+
+@example
+@group
+(in-package test)
+
+(defun fact (x)
+  (if (= x 0) 1
+    (* x (fact (1- x)))))
+@end group
+@end example
+
+Lets say that point is just before the @code{if} expression.  When you
+execute the command @code{vls-instrument} (@code{C-c SPC SPC}) described
+in the previous section you get the selection prompt
+
+@example
+@group
+VLS Instruments
+ 0 = Breakpoint
+ 1 = Wrap selected instrument before
+ 2 = Wrap selected instrument after
+ 3 = Print variables
+ 4 = Capture variables
+ 5 = Count passes
+@end group
+@end example
+
+and are asked to enter a number associated with one of these listed
+instruments.  And lets say that you choose to enter the "Breakpoint"
+instrument.  VLS would then pop-up in a @code{*vls*} buffer something
+like the following
+
+@example
+@group
+Instrumenting definition: fact
+    ---- Edit or enter below and type C-cC-c when done ----
+(cond (t (break "test fact 1")))
+@end group
+@end example
+
+@cindex Conditional breakpoints
+
+Notice first of all that this is a conditional breakpoint with a
+predicate of true by default which in effect makes it an unconditional
+breakpoint if you accept the default.  To make it a conditional
+breakpoint replace the true predicate with any other predicate.  When
+you are happy with the contents of the @code{*vls*} buffer hit C-cC-c
+and the instrument will be registered and installed into the current
+Lisp process.  At the same time VLS will pop-up a new @code{*vsl*}
+buffer with the definition and all of the current instruments in place.
+Each instrument will be clearly delineated with a Lisp comment.
+
+@example
+@group
+Instrumented definition:
+
+(defun fact (x)
+  
+  ;; *Instrument* 
+  (cond (t (break "test fact 1")))
+
+  (if (= x 0) 1
+    (* x (fact (1- x)))))
+@end group
+@end example
+
+Now when you run the factorial function in the current Lisp shell buffer
+it should break at the point you placed this instrument.
+
+@cindex Capturing variables
+
+We will skip the "Wrap" instruments for now and go to an explanation of
+the "Capture variables" since this will help explain a large number of
+the instrument commands and the "Wrap" instruments.  First clear all the
+existing instruments by keeping the point inside the source of the
+definition @code{fact} with the @code{vls-instrument-clear} command
+(@code{C-c SPC c}).  This clears out all the instruments in the
+@code{fact} function and reinstalls @code{fact} from the source that
+point is in.  
+
+In this next example we want to insert a "Capture variables" instrument
+so that we can run a test case and then later view the variable @code{x}
+each time that it comes into this section of the code.  So position
+point just before the inner @code{fact} recursive call expression.  But
+note that if we put an instrument at this point, just before the inner
+recursive @code{fact} call expression, the instrument itself would be an
+expression inside the times expression @code{(* x (fact (1- x)))}.  This
+would produce an undesirable result since whatever the instrument
+returned would become a factor in the times expression.  This is what
+the "Wrap" instruments are for.
+
+@cindex Wrapping instruments
+
+In this case we would choose the "Wrap selected instrument before".
+What this would do is wrap an expression around the instrument followed
+by the @code{(fact (1- x))} expression such that the effect of the
+instrument would occur first but the result of the @code{(fact (1- x))}
+expression would be returned and passed as an argument to the times
+expression.  @footnote{The astute user might ask why if VSL says that it
+tries to do the most intelligent thing that in this case it should
+automatically wrap the instrument.  But the even more astute user would
+further notice that because of the flexibility requirement of VLS the
+user may actually want an instrument with a return value to be a factor.
+VLS takes the position that flexibility is more important in this case
+than trying to do what some might consider the "right" thing.}.
+
+Whenever you select a "Wrap" type of instrument VLS will ask for the
+another instrument to be wrapped with the following expression in the
+Lisp buffer after point.  In this case we want to give it the "Capture
+variables" instrument.  After selecting the "Capture variables"
+instrument, this particular instrument will continually ask for variable
+names until you just type a RET by itself.  So do this by entering
+@code{x RET RET}.  At this point you should see something like the
+following in a @code{*vls*} buffer
+
+@example
+@group
+Instrumenting definition: fact
+    ---- Edit or enter below and type C-cC-c when done ----
+(progn
+  (cond (t (unless (boundp '/fact-capture-1) (setq /fact-capture-1 nil))
+           (push (list (list 'x x)) /fact-capture-1)))
+  (fact (1- x)))
+@end group
+@end example
+
+There are a three things to notice about the features of instruments,
+which is why we chose this example.  The first is to notice that the
+@code{(fact (1- x))} expression is wrapped in the @code{progn} with the
+instrument.  This provides the wrapping effect that we have been
+discussing.  The second thing is to notice that much like the
+conditional breakpoint this instrument is embedded in a conditional
+which in the same way allows a conditional collection of variable
+values.
+
+@cindex Instrument global debug variables
+
+And finally notice the introduction of the @code{/fact-capture-1} global
+variable that this instrument introduces to collect the value of the
+variable @code{x}.  This global variable is specific case of VLS
+instrument variables used for various purposes such as collecting data.
+A VLS instrument variable is guaranteed to be unique among VLS
+instrument variables and unique among all global variables if none other
+have the VLS global debug variables prefix, @xref{Variable Specifics
+Parameters}.  The default prefix is "/" but the user can easily change
+this prefix if for some reason the users application has other global
+variables with this prefix.
+
+Then evaluate in the Lisp shell buffer
+
+@example
+(fact 5)
+@end example
+
+it should return @code{120} in the Lisp shell buffer and then it should
+have collected the values in the VLS global instrument variable.  To see
+this execute the command @code{vls-instrument-view-variables} (@code{C-c
+SPC v}).  VLS should then print in the Lisp shell buffer something like
+
+@example
+@group
+Instrument global variable: /fact-capture-1 =
+(((X 1)) ((X 2)) ((X 3)) ((X 4)) ((X 5)))
+@end group
+@end example
+
+It is important to note that the variable values in the list are
+captured in the reverse order that they occur.  So in the above @code{x}
+first took on the value 5 and its last value was 1.
+
+It is also important to note that instead of just entering the variable
+@code{x} we could have entered any number or variables or s-expressions.
+For example, if to the instrument prompt above for variables to capture
+you entered @code{x RET (+ x 1) RET RET}, then the result of
+@code{vls-instrument-view-variables} would produce something like
+
+@example
+@group
+Instrument global variable: /fact-capture-1 =
+(((X 1) ((+ X 1) 2)) ((X 2) ((+ X 1) 3)) ((X 3) ((+ X 1) 4))
+ ((X 4) ((+ X 1) 5)) ((X 5) ((+ X 1) 6)))
+@end group
+@end example
+
+VLS keeps track of such registered VLS instrument variables and the
+command @code{vls-instrument-view-variables} will print all such
+variables collected for the definition that point is in.  Furthermore
+such instrument variables under an instrument like "Capture variables"
+will keep accumulating on top of previous runs.  If you don't want this
+behavior at some point then execute the command
+@code{vls-instrument-restart-variables} (@code{C-c SPC V}) while point
+is inside of the definition.  VLS tries to do the smart thing with this
+command to reset the instrument variable.  For example so that if the
+instrument variable is collecting a list of things it will reset the
+list to @code{nil}, if the instrument variable is an integer, it will
+reset the instrument variable to 0.
+
+If you wanted the effect of the instrument to take place after the
+expression following point, the @code{(fact (1- x))} expression in our
+example above, then you would use the "Wrap selected instrument after"
+instrument.  All else works the same as the "Wrap selected instrument
+before" including having the wrapped expression returning the value of
+the expression following point.
+
+At any time you can examine the existing instruments in your
+instrumented definition with the command @code{vls-instrument-display}
+(@code{C-c SPC d}).  It displays the instrumented definition with the
+instruments clearly delineated with Lisp comments in a @code{*vls*}
+buffer.
+
+@cindex Editing instruments
+
+Also at any time you can edit the instruments in a definition using
+@code{vls-instrument-edit} (@code{C-c SPC e}).  The way editing
+instruments works is that where ever point is it, will edit the closest
+instrument to where point is.  After bringing up the @code{*vls*} buffer
+with the instrument instance to be edited everything from there on is
+exactly equivalent to creating an instrument in the first place.  If you
+want to remove an instrument you can just clear the @code{*vls} buffer
+below the header that says "Edit or enter below" and then hit C-cC-c and
+that instrument will be removed; all other existing instruments will
+remain.
+
+The "Print variables" instrument is the same as the "Capture variables"
+but instead of capturing the variables and their values it simply prints
+them out as the instrument instance is invoked.
+
+The "Count passes" instrument is very simple and simply counts the
+number of passes through a point in the code in an instrument global
+variable.
+
+@c ------------------------------------------------------------------
+@node Creating Instruments, Instrument Helpers, Given Instruments, Instrumenting Code
+@section Creating Instruments
+
+@cindex Creating your own instruments
+
+It is easy to create your own instruments.  You might need to know some
+Elisp depending on the sophistication of the instrument.  You can look
+at the Lisp type specifics files at the existing ones for examples. In
+the VLS directory the file @code{types/elisp/cl.el} is one example that
+defines a variable @code{vls-cl-instruments} for Common Lisp
+instruments.  The Common Lisp type specifics file @code{types/cl.el}
+then defines @code{vls-cl-instruments} as the value of the types
+parameter @code{v:instruments}.  So in the case of Common Lisp you can
+add to this variable list of instruments or set it to your own list in
+your @code{~/.emacs} file.
+
+If you want to create your own instruments it's a good idea to look at
+the given instruments as examples.  However, this section give a more
+formal presentation for exactness.
+
+Each Lisp type has an Lisp specifics file parameter called
+@code{v:instruments}, as we mentioned about, that defines a variable
+name.  That variable in turn contains a list of instruments where each
+instrument is a list of the form
+
+@example
+(@emph{description} @emph{template})
+@end example
+
+Where @emph{description} is a string describing the instrument that will
+appear in the selection list when the user executes the
+@code{vls-instrument} command.  And @emph{template} is an Elisp form
+that returns an initial instrument Elisp string that will appear in the
+@code{*vls*} buffer when the user selects it through the
+@code{vls-instrument} command.  
+
+In the most general sense a @emph{template} is any Elisp form that
+returns a string.  It could be as simple as just an Elisp literal
+string.  More typically the @emph{template} is an Elisp @code{format}
+expression with @code{%s} fillers in the its first argument string.
+These @code{%s} fillers are usually filled with data based on the
+context of where the user is inserting the instrument in his code.  For
+example it may be filled with a string that includes the name the
+definition that is being instrumented.  Here is an example of the
+Breakpoint Instrument from the Given Instruments for Common Lisp
+
+@example
+@group
+("Breakpoint"
+  (format "(cond (t (break \"%s\")))" (vlsi-def-unique)))
+@end group
+@end example
+
+The "Breakpoint" string is the @emph{description} and will appear in the
+VLS Instruments selection list. The @code{format} expression is, as we
+explained above, as way to generate an initial instrument string
+instance by substituting the @code{%s} with the value returned by the
+function @code{vlsi-def-unique}.  This function will return return a
+unique string that also contains the identity of the definition that is
+being instrumented.  For a list of all provided helper functions
+see the next section, @xref{Instrument Helpers}.
+
+@c ------------------------------------------------------------------
+@node Instrument Helpers,  , Creating Instruments, Instrumenting Code
+@section Instrument Helpers
+@cindex Instrument helper functions
+
+The previous section, @xref{Creating Instruments}, we described using
+@code{vlsi-def-unique} which is one example of a number of VLS
+instrument helper functions given by VLS.  They all have the prefix
+@code{vlsi-}.  Of course you can write your own helper substitution
+functions.  Following are a list of the VLS helper functions and what
+they return.
+
+@vindex vlsi-def-unique
+Function: @code{vlsi-def-unique} Action: Return a unique string
+containing the identity of the definition that point is in.
+
+@vindex vlsi-gvar-unique
+Function: @code{vlsi-gvar-unique} Arguments: @code{descriptor} Action:
+Return a string containing the identity of the definition that point is
+in and the given @code{descriptor} string prefixed by the
+@code{v:global-debug-variable-prefix} of the current Lisp.  The returned
+string represents a unique instrument global variable.
+
+@vindex vlsi-get-var-pairs
+Function: @code{vlsi-get-var-pairs} Action: Prompts the user for
+variables and returns list of variable value pairs of the current Lisp
+as a string.  It is a list or pairs of the form in effect
+
+@example
+('symbol symbol)
+@end example
+
+where is @code{symbol} is the name of a variable that the user enters to
+the prompt.  The effect is that each pair when evaluated in the current
+Lisp will result in the variable name as the first of the pair and the
+value of the variable as the second of the pair.  It does not check what
+the user enters so no just variable but s-expressions and anything else
+can be entered .
+
+@vindex vlsi-next-sexp
+Function: @code{vlsi-next-sexp} Action: Returns the next s-expression
+forward from point as a string.
+
+@vindex vlsi-select-instrument
+Function: @code{vlsi-select-instrument} Action: The user selects an
+instrument as usual and this functions returns the composed instrument
+instance of that instrument.  This is used by instruments that consume
+other instruments, like the "Wrap" instruments.
+
+@c ------------------------------------------------------------------
+@node Type Specifics Files, Creating VLS Shell Commands, Instrumenting Code, Top
+@chapter Type Specifics Files
+@cindex Lisp type specifics files
+
+As mentioned up front VLS gets its flexibility through the use of Lisp
+type specifics files.  This chapter expands on the syntax and semantics
+of these files.
+
+The reader should note that since Lisp type specifics files can be
+modified or substituted by the user the command descriptions in this
+document depend on the original VLS packaged Lisp type specifics files.
+
+@menu
+* Given Specifics Files::       
+* Format of Specifics Files::   
+* Specifics Parameter Forms::   
+* Lisp Specifics Parameters::   
+* Lisp Specifics Code::         
+* Dealing with prompts::        
+* Using Specifics Files::       
+@end menu
+
+@c ------------------------------------------------------------------
+@node Given Specifics Files, Format of Specifics Files, Type Specifics Files, Type Specifics Files
+@section Given Specifics Files
+@cindex Given Lisp type specifics files
+
+VLS provides a set of Lisp type specifics files in the VLS installed
+directory under the subdirectory @code{types}.  These files all have the
+@code{.el} file extension but only for the purpose of Elisp formatting,
+they are @emph{not} Elisp files.  For example @code{types/allegro.el}.
+Note however that some specifics files actually load some Lisp specific
+Elisp code.  Such Elisp code is under the directory @code{types/elisp},
+for example @code{types/elisp/allegro.el}.
+
+@c ------------------------------------------------------------------
+@node Format of Specifics Files, Specifics Parameter Forms, Given Specifics Files, Type Specifics Files
+@section Format of Specifics Files
+@cindex Format of Lisp specifics Files
+
+Lisp type specifics files are @emph{not} Elisp source files.  They are
+files that are strictly interpreted by VLS when running a VLS Lisp
+shell.  The only reason for giving them an @code{.el} extension is so
+that they will be in Elisp mode for formatting.  And they sometimes do
+contain some Elisp code.  And entry in a Lisp type specifics file can
+one of four things:
+
+@display
+@group
+1. A string
+2. A list who's first entry is another list
+3. A list who's first entry is a symbol
+4. An Elisp comment
+@end group
+@end display
+
+Anything else, for the time being, is ignored.
+
+In the case of (1.), a string is interpreted as an absolute or relative
+path name of another Lisp type specifics file to be interpreted by VLS.
+In the case of (2.), a list whose first element is a list then it is
+interpreted as a list of Lisp specifics parameters to be interpreted by
+VLS.  In the case of (3.), a list whose first element is a symbol the
+list is considered to be an Elisp s-expression and it is just evaluated
+by Elisp. In the case of (4.), Elisp comments are just ignored.
+
+@c ------------------------------------------------------------------
+@node Specifics Parameter Forms, Lisp Specifics Parameters, Format of Specifics Files, Type Specifics Files
+@section Specifics Parameter Forms
+
+As mentioned in the previous section a Lisp Specifics file with an entry
+of a list who's first entry is a list is interpreted by VLS as a list of
+Lisp specifics parameters.  Each sublist entry is a list of the form
+
+@example
+(@emph{parameter-symbol} @emph{parameter-value})
+@end example
+
+Where @emph{parameter-symbol} is the symbol referenced by the VLS code
+to get a specific Lisp parameter value to support some VLS generalized
+action.  This is the key to the flexibility of VLS and what allows VLS
+to provide a "vanilla" Lisp shell capability, that is the capability to
+adapt to any flavor of Lisp without changing the way things work in VLS.
+The @emph{parameter-value} then can be one of five things
+
+@example
+@group
+1. An Elisp specifics string
+2. An Elisp s-expression that returns a specifics string
+3. An Elisp list of specifics strings
+4. An Elisp s-expression that returns a list of specifics strings
+5. Any Elisp value
+@end group
+@end example
+
+In the first four cases above the semantics of a "specifics string" is
+an Elisp string that VLS can send to the current List process where it
+will be interpreted as a legitimate input.  In the case of (3.) and (4.)
+a list of specifics strings means that VLS should send that list
+sequentially to the current Lisp process.  
+
+In the case of (2.) and (4.)  VLS will evaluate the Elisp s-expression
+for either a specifics string or a list of specifics strings.  And in
+the case of (2.) and (4.)  the Elisp s-expression can reference the
+locally bound variable @code{arg} which is bound to the raw Emacs prefix
+argument (nil, a number or list of a number).  In some cases VLS will
+dispatch on the Emacs prefix argument but in others the specifics
+parameter is expected to do that dispatching in its Elisp code.  In some
+cases where a VLS command will dispatch on the prefix argument or does
+not need the prefix argument it may pass some other value in the
+@code{arg} local variable.  Also if there needs to be more that one
+argument the rest are passed in a local variable @code{args} which is a
+list of the rest of the arguments.  This document will indicate how each
+parameter must interpret the @code{arg} and @code{args} variable,
+@xref{Command Specifics Parameters}.
+
+The cases (1.) through (4.) above are meant for the command parameters
+classified in the previous section that by convention have a @code{c:}
+prefix.  The cases of (1.) and (2.) also apply to the Lisp probe
+specifics parameters with a prefix of @code{p:}.  Lisp probes should not
+use cases (3.) or (4.) since a single return value is required for
+probes.  The case of (5.) is for variables with a prefix of @code{v:}
+and mechanism with a prefix of @code{m:}.
+
+In all cases of specifics parameters recursion can be used.  That is to
+say, a @emph{parameter-value} can refer to a previously established
+@emph{parameter-value} recursively.  And any such recursively referenced
+parameters must have been defined otherwise the @emph{parameter-value}
+will be an Elisp @code{nil}.  The reference is done by invoking the VLS
+function @code{vls-spec}
+
+@vindex vls-spec
+Function: @code{vls-spec} Meaning: Given a @emph{parameter-symbol} will
+return its @emph{parameter-value}.
+
+An example of this is the Common Lisp reset to top level message
+parameter
+
+@example
+@group
+(c:reset-top-message 
+  "(progn (format t \"Reset to top level\") (values))")
+@end group
+@end example
+
+where for example the Allegro specifics parameter @code{c:top-listener}
+references this value
+
+@example
+(c:top-listener (list ":reset" (vls-spec 'c:reset-top-message)))
+@end example
+
+
+The reader may wonder why strings are used in cases (1.) through (4.)
+instead of just s-expressions, since after all VLS only talks to Lisp
+processes.  There are two reasons for this.  First is that the syntax of
+some forms in any particular Lisp may not have a representation in Elisp
+forms.  And second, some modern Lisp implementations add easy typing
+conveniences interpreted by their Lisp listeners in special cases, like
+break loops.  And in these cases the easy typing conveniences are
+usually non-legitimate s-expressions.
+
+@c ------------------------------------------------------------------
+@node Lisp Specifics Parameters, Lisp Specifics Code, Specifics Parameter Forms, Type Specifics Files
+@section Lisp Specifics Parameters
+
+As a convention VLS Lisp specifics parameters are named with Elisp
+symbols that start with the following letter prefixes
+
+@example
+@group
+c: command
+m: mechanism
+p: probe
+v: variable
+@end group
+@end example
+
+Although a convention every specifics parameter symbol name must have a
+colon as the second character.  This is to insure that internal
+specifics parameter symbols will never accidentally clash with these
+specifics parameter symbols.
+
+If the symbol if prefixed with a "c:" it means that the symbol defines a
+command parameter used by Lisp shell commands.  The "p:" prefix means
+that the symbol defines a probe command sent to the current Lisp shell
+for collecting some information about the Lisp process.  The "v:" prefix
+means that its symbol defines a variable used by VLS having a value
+specific to the type of Lisp.  The "m:" prefix means its parameter value
+contains some internal VLS mechanism that is peculiar to the specific
+type of Lisp.  It is helpful to classify the specifics parameters in
+this way and the subsections in this section are based on this
+classification.
+
+@c ------------------------------------------------------------------
+@menu
+* Command Specifics Parameters::  
+* Mechanism Specifics Parameters::  
+* Probe Specifics Parameters::  
+* Variable Specifics Parameters::  
+@end menu
+
+@c ------------------------------------------------------------------
+@node Command Specifics Parameters, Mechanism Specifics Parameters, Lisp Specifics Parameters, Lisp Specifics Parameters
+@subsection Command Specifics Parameters
+
+When you execute a VLS command in a VLS Lisp shell buffer, like
+@code{vls-back-trace}, it dispatches a command to the current Lisp
+process using the value of one of the specifics parameters in this
+subsection.  These parameters must be a form that resolves to a string
+or strings that represents a legitimate expression that will be
+interpreted by the current Lisp process without error, @emph{Specifics
+Parameter Forms}.  If a prefix argument is specified it is passed in
+@code{arg}.  If other than a prefix argument is passed in @code{arg} or
+@code{args} it is explained separately for each parameter.
+
+Lisp Specific Parameter: @code{c:apropos} Meaning: Used by the
+@code{vls-apropos} command to do an apropos on the symbol that point in
+on.  The symbol is passed as the first of @code{args}.
+
+Lisp Specific Parameter: @code{c:back-trace} Meaning: Used by the
+@code{vls-back-trace} command to print a stack back-trace when in a
+break handler.  Prefix arguments should do something implementation
+dependent and useful with the execution stack, like print out a more or
+less detailed stack or more or less of a stack.
+
+Lisp Specific Parameter: @code{c:compile-file} Meaning: Used by the
+@code{vls-compile-file} command to compile the current buffer's file in
+the current Lisp process.  The file string is passed in @code{arg}.
+
+Lisp Specific Parameter: @code{c:current-frame} Meaning: Used by the
+@code{vls-current-frame} command to print out information about the
+current stack frame in the current Lisp shell buffer.
+
+Lisp Specific Parameter: @code{c:compile} Meaning: Used by various
+commands to compile a definition who's symbol name is passed in
+@code{arg}.
+
+Lisp Specific Parameter: @code{c:describe} Meaning: Used by the
+@code{vls-describe} command to describe the symbol that point in on.
+The symbol is passed as the first of @code{args}.
+
+Lisp Specific Parameter: @code{c:down-stack} Meaning: Used by the
+@code{vls-down-stack} command to move down the run time stack one frame;
+meaning to make that frame the current frame.  A positive integer prefix
+argument N should move down N frames.  A @code{C-u} prefix argument
+should move to the bottom of the stack.
+
+Lisp Specific Parameter: @code{c:exit-lisp} Meaning: Used by the
+@code{vls-exit-lisp} command to exit the Lisp process.
+
+Lisp Specific Parameter: @code{c:focus-process} Meaning: For Lisps that
+have multiprocessing and access to a process list, this parameter is
+used by the @code{vls-focus-process} command to focus a Lisp listener on
+the first process in a process list.  A numeric prefix argument N should
+focus the Nth process in a process list.  A @code{C-u} prefix argument
+should print the process list in the current Lisp shell buffer.
+
+Lisp Specific Parameter: @code{c:help} Meaning: Used by the
+@code{vls-help} command to print out a list of commands used by the
+current Lisp in the current Lisp context.  Typically these are
+abbreviated commands as opposed to proper s-expressions, but they don't
+have to be.
+
+Lisp Specific Parameter: @code{p:in-package} Meaning: For Lisps that
+have a symbol package system this expression should put the current Lisp
+process in a given package.  The package string is passed in @code{arg}.
+
+Lisp Specific Parameter: @code{c:load-file-print} Meaning: Used by the
+@code{vls-load-source} and @code{vls-load-source-or-binary} commands to
+load the file passed in @code{arg} and to print the results of each
+s-expression in the file.
+
+Lisp Specific Parameter: @code{c:load-file} Meaning: Used by the
+@code{vls-load-source} and @code{vls-load-source-or-binary} commands to
+load the file passed in @code{arg}.
+
+Lisp Specific Parameter: @code{c:message} Meaning: An expression that
+prints a given message using the current Lisp process in the current
+Lisp buffer.  The message string is passed in @code{arg}.  This
+expression @emph{should not} return a value if possible.
+
+Lisp Specific Parameter: @code{c:pop-listener} Meaning: Used by the
+@code{vls-reset-listener} command to "pop" the current listener into the
+previous listener.  The prefix argument @code{arg}is always an integer N
+and it means to pop the listeners to the Nth previous listener.  For
+example if the current Lisp was in a break listener and typed an
+expression that signaled an error into another break listener, this
+command were @code{arg = 1} would pop back to the first break listener.
+
+Lisp Specific Parameter: @code{c:reset-top-message} Meaning: If needed,
+used by the @code{c:top-listener} specifics parameter to include a
+string s-expression that will print that the Lisp process is at top
+level after the first parameter's s-expression actually puts the process
+in top level.
+
+Lisp Specific Parameter: @code{c:return-frame} Meaning: Used by the
+@code{vls-return-frame} command (usually during a break loop) to return
+@code{nil} to the current stack frame call and continue the computation.
+If a @code{non-nil} value is passed in the local @code{arg} variable
+then return that value and do the same.
+
+Lisp Specific Parameter: @code{c:step-next} Meaning: Used by the
+@code{vls-step} command to step the Lisp stepper one step.  If the
+@code{arg} is an integer N then step N times.
+
+Lisp Specific Parameter: @code{c:step-over} Meaning: Used by the
+@code{vls-step} command to evaluate the current expression in
+non-stepping mode and continue stepping.
+
+Lisp Specific Parameter: @code{c:top-listener} Meaning: Used by the
+@code{vls-reset-listener} command to pop the current Lisp into the top
+level listener regardless of how many listeners nested deep the current
+Lisp process is.
+
+Lisp Specific Parameter: @code{c:up-stack} Meaning: Used by the
+@code{vls-up-stack} command to move up the run time stack one frame;
+meaning to make that frame the current frame.  A positive integer prefix
+argument N should move up N frames.  A @code{C-u} prefix argument should
+move to the top of the stack.
+
+Lisp Specific Parameter: @code{c:var-print} Meaning: This expression
+should pretty print if possible or just print if not possible a given
+variable in the current Lisp buffer.  The variable string is passed in
+@code{arg}.
+
+Lisp Specific Parameter: @code{p:var-reset} Meaning: This expression
+should a reset the value for a given variable and then print that the
+given variable name was reset and its new value.  The variable name
+string will be passed in @code{arg}.  The reset value will be based on
+the data type of the variable value.  So if the type is number it should
+be 0, if the type is a list it should be the empty list, if the type is
+a string it should be the empty string, ... etc.
+
+Lisp Specific Parameter: @code{c:var-value} Meaning: Used by the
+@code{vls-var-value} command to return the value of a local variable in
+a stack frame.
+
+Lisp Specific Parameter: @code{c:what-error} Meaning: Used by the
+@code{vls-what-error} command to print the current error being handled
+by the Lisp process.
+
+Lisp Specific Parameter: @code{c:what-package} Meaning: For Lisps that
+have a symbol package system this parameter is used by the
+@code{vls-what-package} command to display the current package in the
+current Lisp process.
+
+@c ------------------------------------------------------------------
+@node Mechanism Specifics Parameters, Probe Specifics Parameters, Command Specifics Parameters, Lisp Specifics Parameters
+@subsection Mechanism Specifics Parameters
+
+Some specifics parameters are needed for VLS internal mechanisms, such
+as adding specific documentation strings to VLS functions.  This section
+describes those parameters.
+
+Lisp Specific Parameter: @code{m:more-doc} Meaning: Indicates more
+documentation string is to be added to the vanilla documentation string
+of VLS commands.  Its value must be a list of two element lists were
+each two element list is of the form
+
+@example
+(@emph{function-name} @emph{additional-doc-string})
+@end example
+
+where @emph{function-name} is a VLS function that needs additional
+specific documentation added to the vanilla documentation of
+@emph{function-name} and @emph{additional-doc-string} is that additional
+documentation string.  A common use is to add additional documentation
+for command prefix arguments that have slightly different meaning for
+each specific Lisp type.
+
+Lisp Specific Parameter: @code{m:replace-doc} Meaning: Indicates two
+things.  First, different from @code{m:more-doc} where more documentation
+is added to the vanilla string, the whole vanilla documentation string
+is replaced by this string.  Its value must be a list of two element
+lists were each two element list is of the form
+
+@example
+(@emph{function-name} @emph{replacement-doc-string})
+@end example
+
+where @emph{function-name} is a VLS function that will have its
+documentation replaced by @emph{replacement-doc-string}.  And thus,
+second and equally important, since replacing the whole command
+documentation VLS assumes that any predefined logic of the command
+should not be used and instead the a VLS types parameter named
+@emph{function-name} will return a value being a string that is sent to
+the current Lisp process.  Note that in this case any Elisp logic for
+the command, if even needed, must be performed by the Elisp code, if
+any, specified as the parameter value.  Also note that this implies that
+whenever a @code{m:replace-doc} parameter is specified a
+@emph{function-name} parameter @emph{must} be specified; otherwise the
+replaced command will refuse to execute with an error.
+
+The @code{m:replace-doc} parameter and its implications seems rather
+complicated but is actually very simple, it simply triggers a specific
+VLS command whose current Lisp buffer specific semantics are totally
+different from any vanilla semantics.  This is usually only necessary
+when a Lisp implementation does not provide enough functionality to
+implement the vanilla semantics but still wants to have such a specific
+VLS command.  Clisp for example prefers to prompt the user for a
+return/continue value when in a break loop rather than have Emacs prompt
+the user with a @code{C-u} prefix argument as the vanilla VLS command
+@code{vls-return-frame} specifies.  The Clisp type specifics file then
+contains the following parameters to make this happen
+
+@example
+@group
+ (m:replace-doc
+  ((vls-return-frame
+    "Return a value from the current stack frame and continue.")))
+ (vls-return-frame "Return")
+@end group
+@end example
+
+The first parameter @code{m:replace-doc} changes the vanilla command
+documentation and the second parameter @code{vls-return-frame} required
+by virtue of the first, changes the behavior of the vanilla command
+@code{vls-return-frame} for Clisp to just send the string "Return" to
+the current Lisp process.
+
+@c ------------------------------------------------------------------
+@node Probe Specifics Parameters, Variable Specifics Parameters, Mechanism Specifics Parameters, Lisp Specifics Parameters
+@subsection Probe Specifics Parameters
+
+The probe specifics parameters are used by VLS to get some necessary
+information from the current Lisp process.  Each of these parameters
+should be an Elisp string that contains an expression that when sent to
+the current Lisp will return a value.  In cases where there should be
+instance values substituted in the Elisp string there should be
+@code{%s} characters at that point in the s-expression.
+
+Lisp Specific Parameter: @code{p:bound-var-test} Meaning: A predicate
+that should be true if a given variable is bound in the current Lisp
+process.  There must be a @code{%s} where the name of the variable will
+occur in the s-expression.
+
+Lisp Specific Parameter: @code{p:current-package} Meaning: For Lisps
+that have a symbol package system this should be an expression that will
+return the current Lisp process package name.
+
+Lisp Specific Parameter: @code{p:package-predicate} Meaning: For Lisps
+that have a symbol package system this expression is a predicate that
+should be true if the a given package exists.  There must be a @code{%s}
+where the package name should occur.
+
+@c ------------------------------------------------------------------
+@node Variable Specifics Parameters,  , Probe Specifics Parameters, Lisp Specifics Parameters
+@subsection Variable Specifics Parameters
+
+Variable specifics parameters are specific values that are needed by the
+VLS interface to the current Lisp process and buffer and can not be
+classified as commands, probes or internal mechanism.  Or in other words
+everything else.
+
+Lisp Specific Parameter: @code{v:end-expression} Meaning: A string of a
+character or characters that the specific Lisp process needs to indicate
+that all the data that is to be sent in fact has been sent.  For example
+in most Common Lisps this is the newline character.  Note that this
+works for any amount or kind of data sent to the Lisp process since
+embedded end expression characters in the data are eaten by the parsing
+of s-expressions.
+
+Lisp Specific Parameter: @code{v:eval-print-separator} Meaning: After
+evaluating a Lisp expression in the current Lisp buffer the characters in
+this string will be inserted in the buffer before the return value is
+printed.  This is mean to be something like a newline or empty string
+depending on how the specific Lisp process returns the return value
+string.
+
+@cindex Global debug variables
+
+Lisp Specific Parameter: @code{v:global-debug-variable-prefix} Meaning:
+Used by VLS helper functions like @code{vlsi-gvar-unique} to
+automatically create a global variable name that is unique for all
+practical purposes.  This prefix string will start the symbol name and
+other parts of the variable name will be computed based on the usage.
+
+Lisp Specific Parameter: @code{v:has-packages} Meaning: If this
+parameter exits for the current Lisp and has a non-nil value then it
+indicates the the current Lisp has a symbol package system.  This means
+that the current Lisp has more than one name-space for symbols, but
+further means that it has some functionality for dealing with packages
+like the @code{in-package} of Common Lisp.  If some Lisp is invented
+that has a symbols package system with a different functionality VLS may
+have to be augmented to deal with that new functionality.
+
+Lisp Specific Parameter: @code{v:in-package-re} Meaning: If the current
+Lisp has @code{v:has-packages} non-nil and it has a form that puts the
+current Lisp into a new symbol package then @code{v:in-package-re}
+should be an Elisp regular expression that allows Elisp search functions
+to use and successfully find such an expression in a buffer.
+
+Lisp Specific Parameter: @code{v:instrument-visual} Meaning: A string
+that serves as a comment for the current Lisp and the nature of the
+comment indicates and delineates an instrument s-expression follows that
+was inserted in the users code.  The characters @code{%s} must appear in
+the string where the instrument will be inserted.
+
+For example this string for Common Lisp
+defaults to
+
+@example
+"\n;; *Instrument* \n%s\n\n"
+@end example
+
+Note the newlines which also delineate the instrument s-expression from
+user code.
+
+Lisp Specific Parameter: @code{v:instruments} Meaning: This is an Elisp
+variable where the instruments for the current lisp are stored,
+@xref{Creating Instruments}.  For example in Common Lisp the variable
+@code{vls-cl-instruments}.  Having the value of this parameter be an
+Emacs variable rather than the instrument list itself gives the user a
+bit more flexibility in maintaining his own instruments.
+
+@c ------------------------------------------------------------------
+@node Lisp Specifics Code, Dealing with prompts, Lisp Specifics Parameters, Type Specifics Files
+@section Lisp Specifics Code
+@cindex Writing Lisp specifics code
+
+In composing Lisp specifics code, if the specific Lisp has a package
+system then strictly speaking one needs to make sure that all lisp code
+functions are of the fully qualified package form
+@code{package:function}.  For example in Common Lisp specifying
+@code{lisp:car} instead of just @code{car}.  The reason is that when
+sending code to the current Lisp process, the current package may not
+use the given package.
+
+Considering that doing this is too pedantic VLS chooses not to do this
+in the given set of Lisp specifics parameters for the sake of making it
+easier to add specifics Lisp code.  The risk of course is that if the
+symbols used are not in the current Lisp process package then then a VLS
+command may break with an undefined function.  But this should be rare
+and seldom be a problem.  If it does become a problem then a future
+version of VLS would probe the Lisp process to make sure that the
+current package is copacetic and if not put the process in a package
+that is.
+
+@c ------------------------------------------------------------------
+@node Dealing with prompts, Using Specifics Files, Lisp Specifics Code, Type Specifics Files
+@section Dealing with prompts
+@cindex Dealing with prompts
+
+It is important to understand issues of Lisp prompts in any Lisp shell.
+Lisp prompts can be problematical to a Lisp shell if not handled
+properly.  Not all such things that are thus problematical are strictly
+speaking Lisp prompts.  A "proem" is a kind of introductory text and
+this document uses the term "proem" to refer to such Lisp prompts that
+are not really prompts.  In a Lisp read-eval-print loop, more modern
+referred to as a "Lisp listener", there is a continuous loop where the
+Lisp process reads an s-expression from the user, evaluating it and then
+returning the value and printing it.  It most modern Lisps an option is
+to have a prompt printed asking for the user input to be read.  Some
+Lisps will also have a proem to introduce the printed return value, like
+for example printing "Value: " followed by the actual return value.
+
+For prompts where there is white-space before and after the prompt there
+will never be a problem in VLS.  There is almost always a white-space
+before a prompt since traditionally read-eval-print loops emit a newline
+character after the printing of each return value.  If not VLS provides
+a specifics parameter @code{v:eval-print-separator} for this purpose.
+
+If there is no white-space after the prompt the VLS command
+@code{vls-eval-previous} for example might include the prompt in the
+value to be evaluated.  For example if you specified a prompt of
+"Enter:" and you typed "a" to evaluate the variable @code{a} VLS would
+interpret @code{Enter:a} as a whole legitimate symbol, as it should it
+most Lisps.  The obvious cure in this example is to use a prompt like
+"Enter: " instead with a white-space character at the end.
+
+For VLS, proems however are problematical regardless of white space.
+When VLS probes the current Lisp process for values, if a proem appears
+in the output stream along with the value VLS has no way of knowing if
+the proem is part of the output or not without some extra help.  If
+there is a proem in a specific Lisp then the specifics files should
+specify the @code{v:output-proem-regexp} parameter.
+
+@cindex Free form scratch pad paradigm
+
+VLS was designed to allow a free form scratch pad paradigm for operating
+the Lisp shell where there is no prompt or proem, much like the Elisp
+*scratch* buffer.  We encourage the user to try this kind of paradigm
+and there is usually a way to set your prompts to nil or the empty
+string so that there are no prompts.  It is a lot cleaner and it makes
+the Lisp shell buffer almost completely the same as a Lisp file buffer.
+Lisp read-eval-print loops do not need a prompt since there is always a
+return value printed as feedback to the user that it is ready for
+another input.  There in one exception to this that the author knows of
+which is in Common Lisp if a function ends with a no argument
+@code{values} expression which means that the function will return no
+value.  But in this case it is frequently used for making a nice display
+without an interfering output value, much like Common Lisp's
+@code{pprint}.  VLS makes it easy to get information that is typically
+provided in a prompt string.  For example in Lisps that have symbol
+package systems, it is easy in VLS to view the current Lisp package at
+any time.  All this being said the encouraged free form paradigm applies
+mostly to Lisp files and the Lisp shell buffer at the top level
+listener.  In other listeners however, like a stepper or break listener
+prompts with information like the break level are useful however.
+
+@c ------------------------------------------------------------------
+@node Using Specifics Files,  , Dealing with prompts, Type Specifics Files
+@section Using Specifics Files
+@cindex Lisp specifics files, How to use
+
+VLS provides a set of Lisp Type Specifics Files for many Lisp
+implementations and specifications.  You can use these files if they
+serve your purposes, you can augment those files or you can completely
+create your own Specifics files using the given ones as examples.
+
+Lets say for example that you want to augment the given Lisp Specifics
+and just change two Lisp Specifics parameters, one of for a Lisp
+specification of Common Lisp and another for a Lisp implementation
+Allegro. Here is an example of how to do this.
+
+First create your own Specifics file in some directory $SOMEDIR for
+allegro in a file $SOMEDIR/allegro.el as follows
+
+@cindex Global debug variables
+
+@example
+@group
+$VLSLIBDIR/types/allegro.el"
+
+;; My Allegro specific stuff examples
+;;; Change cl.el c:compile-file option only known to Allegro
+((c:compile-file 
+  (format "(compile-file \"%s\" :xref nil :verbose t)" arg))
+;;; Change allegro.cl default of debug global variable prefix
+ (v:global-debug-variable-prefix "/*"))
+@end group
+@end example
+
+Then if you create a Lisp shell command
+
+@example
+@group
+; Example Lisp shell command for illustration
+(defun my-lisp-shell ()
+  "My Lisp Shell"
+  (interactive)
+  (vls-shell '(my-allegro "lisp" "$SOMEDIR/allegro.el")))
+@end group
+@end example
+
+and after executing @code{my-lisp-shell} the following will happen:
+
+First @code{$VLSLIBDIR/types/allegro.el} will be interpreted by VLS.  At
+this point everything would be as if you had just used the given
+@code{$VLSLIBDIR/types/allegro.el} in the above example Lisp shell
+command.  Then the following parameters list would override the given
+Specifics parameters @code{c:compile-file} and @code{c:compile-file}
+with your versions of those parameters.  And finally VLS would execute
+this @code{my-allegro} Lisp shell that will use these new parameters.
+
+@c ------------------------------------------------------------------
+@node Creating VLS Shell Commands, Other VLS Interfaces, Type Specifics Files, Top
+@chapter Creating VLS Shell Commands
+@cindex Creating your own VLS Shell commands
+
+VLS allows many different kinds of Lisp shell commands to be written
+given the basic VLS library.  VLS does not want to assume that any one
+Lisp command is better than any other.  VLS provides a simple VLS shell
+command called @code{vlsc} that we showed how to use in the Sample Lisp
+Shell Command section, @xref{Sample Lisp Shell Command}.  But you can
+create your own VLS Lisp shell commands that operate in different ways.
+The author for example prefers to invoke VLS Lisp shells as Agroups
+entries, @xref{VLS Shell Commands in Agroups}.
+
+@c ------------------------------------------------------------------
+@menu
+* VLS Shell Commands in General::  
+* VLS Shell Commands in Agroups::  
+@end menu
+
+@node VLS Shell Commands in General, VLS Shell Commands in Agroups, Creating VLS Shell Commands, Creating VLS Shell Commands
+@section VLS Shell Commands in General
+@cindex VLS Shell Commands in General
+
+More generally VLS is meant to be used by having a user written Lisp
+shell command call the @code{vls-shell} function.  You use the
+@code{vls-shell} function by calling with
+
+@example
+(vls-shell @emph{specifics})
+@end example
+
+where @emph{specifics} is a list of the form
+
+@example
+(@emph{shell-id} @emph{lisp-executable} @emph{specifics-file})
+@end example
+
+For example this function call
+
+@example
+(vls-shell '(allegro "lisp" "$VLSLIBDIR/types/allegro.el"))
+@end example
+
+is an example of giving the @code{vls-shell} function's @emph{specifics}
+input.  The Lisp shell command would usually select a @emph{specifics}
+input based on some user set variable or strategy. The supplied
+@code{vlsc}, command is a simple example of a user set variable
+containing a list of @emph{specifics} inputs, @xref{Sample Lisp Shell
+Command}.
+
+The @emph{shell-id} is a symbol that makes a VLS Lisp shell instance
+unique from all other VLS Lisp shells.  Additionally the Lisp shell
+buffer name and Lisp process name is derived from this symbol.  These
+could be different Lisp shell types or two or more instances of the Lisp
+shell buffer of the same type.  For example @code{allegro-1} and
+@code{allegro-2} could be two Lisp shell buffers running the same Lisp
+execute but in different Lisp processes in different buffers.
+
+The @emph{lisp-executable} is a string that when executed as an Emacs
+process will run the Lisp type.  It will use the user's execution paths
+if necessary.
+
+The @emph{specifics-file} is a string containing the pathname of the VLS
+format Lisp specifics file of that type, @xref{Type Specifics Files}.
+
+
+When you write such a command you usually specify that when the user
+uses your Lisp shell command the VLS function @code{vls-shell} will get
+auto-loaded.  You specify this as putting
+
+@example
+(autoload 'vls-shell "$LISPDIR/vls")
+@end example
+
+in the user's @code{~/.emacs} file.
+
+@c ------------------------------------------------------------------
+@node VLS Shell Commands in Agroups,  , VLS Shell Commands in General, Creating VLS Shell Commands
+@section VLS Shell Commands in Agroups
+@cindex VLS Shell Commands in Agroups
+
+Action Groups (Agroups) is a powerful facility for making it easy to
+create. manipulate, execute and maintain groups and subgroups of
+automations called @emph{actions}.  Each specific action is generated
+from a generalized action template.  Agroups is extensible and makes it
+easy to add new such action templates.  VLS provides such action
+templates for creating actions that evaluate things in Lisp shells and
+for running Lisp shells.
+
+If you use Agroups it is a lot easier to create new Lisp shells without
+having to write any code.  After installing VLS the VLS action templates
+are in the file
+
+@example
+$VLSLIBDIR/extra/agroups-vls.el
+@end example
+
+All you need to do is load the VLS provided action templates after you
+load the Agroups facility in your @code{~/.emacs} file.  So for
+example using the notation in this document you could put in your
+@code{~/.emacs} file
+
+@example
+@group
+(load "$LISPDIR/agroups"
+(load "$VLSLIBDIR/extra/agroups-vls")
+(autoload 'vls-shell "$LISPDIR/vls")
+@end group
+@end example
+
+Thereafter when executing the Agroups operation "View user defined
+Actions" you will see
+
+@example
+@group
+User defined actions
+  Vanilla Lisp Shell (keys: l s)
+  Vanilla Lisp Shell: Evaluate a Lisp expression (keys: l e)
+@end group
+@end example
+
+When you want to create a new VLS Lisp shell you simply execute the user
+defined action "Vanilla Lisp Shell" and it will prompt you with the data
+for a specific Lisp shell and create that specific action entry in the
+current Agroups group.  Each time you execute that specific Lisp shell
+action it will create a new Lisp shell buffer Associated with that
+specific Lisp shell process or return to a previously such created Lisp
+shell buffer.
+
+The user defined action "Vanilla Lisp Shell: Evaluate a Lisp expression"
+is also very powerful and allows you to have any arbitrary Lisp
+expression as an Agroups entry that when selected gets evaluated in the
+current VLS Lisp shell.
+
+Agroups is one of the more preferred ways of using VLS Lisp shells since
+you can arrange specific Lisp shells and evaluation automations that are
+local to specific groups or projects.
+
+@c ------------------------------------------------------------------
+@node Other VLS Interfaces, Variable and Command Index, Creating VLS Shell Commands, Top
+@chapter Other VLS Interfaces
+@cindex Other VLS Interfaces
+
+Other than Lisp shell capability VLS provides two other function
+interfaces to VSL.  One is for sending Lisp data to the current Lisp
+process for evaluation and the other is for probing the current Lisp
+process for information.  These can be used in Lisp type files or in
+ELisp code written by the user.
+
+Function: @code{vls-send-lisp-string} Action: Given a string argument it
+sends the string followed by the @code{v:end-expression} parameter value
+to the current Lisp process.  Any resulting output will appear in the
+current Lisp buffer.
+
+Function: @code{vls-lisp-evalue} Action: This function is used to probe
+the current Lisp process for information.  Given a string it sends it to
+the current Lisp process followed by the @code{v:end-expression}
+parameter value.  The output of this function does not appear in the
+current Lisp buffer but instead is parsed by Elisp and returns a single
+Elisp expression.  In other words it probes the current Lisp process,
+usually with an s-expression, and returns the equivalent Elisp value to
+be used by Elisp code.  If the returned data from the current Lisp
+process can not be parsed by Elisp an error will be signaled.
+
+An example of using @code{vls-send-lisp-string} is in the VLS provided
+Agroups template for creating actions to evaluate expressions in the
+current Lisp process, @xref{VLS Shell Commands in Agroups}.  An example
+of using @code{vls-lisp-evalue} is used by VLS itself in determining the
+current package for Lisps that have package systems.  There are many
+reasons why the Lisp types parameters code might want to probe the
+current Lisp process to get an Elisp value to perform the expected
+results.  For example some Lisp implementation's specific
+@code{c:top-listener} parameter uses this function to determine the
+break level.
+
+@c ------------------------------------------------------------------
+@node Variable and Command Index, Concept Index, Other VLS Interfaces, Top
+@unnumbered Variable and Command Index
+
+@printindex vr
+
+
+@c ------------------------------------------------------------------
+@node Concept Index,  , Variable and Command Index, Top
+@unnumbered Concept Index
+
+@printindex cp
+
+@c ------------------------------------------------------------------
+@contents
+@bye
